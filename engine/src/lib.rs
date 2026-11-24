@@ -48,6 +48,7 @@ pub use pipeline::{DrawStyle, Shaders};
 pub use platform::{RunError, WindowConfig, run};
 pub use shader_watch::{ShaderWatch, compile_shader};
 pub use sky::{FACE_NAMES, Sky, generate_sky, load_cube_faces, sky_box};
+pub use swapchain::PresentPreference;
 pub use tga::{Image, TgaError, load_tga};
 pub use transform::Transform;
 pub use tween::{Easing, Tween, smoothstep};

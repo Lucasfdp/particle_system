@@ -25,7 +25,7 @@ use crate::pipeline::{DrawStyle, Pipeline, Shaders};
 use crate::probe::{PROBE_SIZE, ReflectionProbe, face_cameras};
 use crate::shader_inputs::{INSTANCE_CAPACITY, MAIN_VIEW, ShaderInputs, push_bytes};
 use crate::spirv::SpirvError;
-use crate::swapchain::Swapchain;
+use crate::swapchain::{PresentPreference, Swapchain};
 use crate::texture::{Textures, WHITE_CUBE};
 use crate::tga::{Image, load_tga};
 
@@ -110,6 +110,8 @@ pub(crate) struct GpuContext {
     queue_family_index: u32,
     swapchain_loader: khr::swapchain::Device,
     swapchain: Swapchain,
+    /// particle_system § 1: vsync or uncapped — kept so a resize rebuilds the same way.
+    present: PresentPreference,
     rendering_loader: khr::dynamic_rendering::Device,
     /// § 18: whether `fillModeNonSolid` was enabled at device creation (wireframe).
     wireframe: bool,
@@ -157,6 +159,7 @@ impl GpuContext {
         app_name: &CStr,
         window: &(impl HasDisplayHandle + HasWindowHandle),
         size: (u32, u32),
+        present: PresentPreference,
     ) -> Result<Self, GpuError> {
         let display_handle = window.display_handle()?.as_raw();
         let window_handle = window.window_handle()?.as_raw();
@@ -234,6 +237,7 @@ impl GpuContext {
             physical_device,
             size,
             vk::SwapchainKHR::null(), // first one: nothing to replace
+            present,
         )
         .map_err(|e| {
             // SAFETY: the swapchain cleaned up after itself; nothing else uses the device.
@@ -346,6 +350,7 @@ impl GpuContext {
             queue_family_index,
             swapchain_loader,
             swapchain,
+            present,
             rendering_loader,
             wireframe,
             warned_instances: false,
@@ -579,6 +584,7 @@ impl GpuContext {
                 self.physical_device,
                 size,
                 self.swapchain.handle, // hand over the old one
+                self.present,          // same preference as the first one
             )?;
             let old = std::mem::replace(&mut self.swapchain, swapchain);
             old.destroy(&self.device, &self.swapchain_loader);

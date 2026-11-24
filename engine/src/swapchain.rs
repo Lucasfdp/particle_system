@@ -37,6 +37,9 @@ impl Swapchain {
     /// `old` is the swapchain being replaced after a resize (§ 16), or null the first
     /// time: handing it over lets the driver reuse its resources and avoids two
     /// swapchains fighting over one window. The caller still destroys the old one.
+    // Eight plain handles and settings, each used once; a struct just for this call
+    // would add a type without making anything clearer.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         device: &Device,
         loader: &khr::swapchain::Device,
@@ -45,6 +48,7 @@ impl Swapchain {
         physical_device: vk::PhysicalDevice,
         window_size: (u32, u32),
         old: vk::SwapchainKHR,
+        present: PresentPreference,
     ) -> Result<Self, GpuError> {
         // The three menus the surface offers.
         // SAFETY: plain queries on a live physical device and surface.
@@ -59,7 +63,7 @@ impl Swapchain {
         };
 
         let format = choose_format(&formats);
-        let present_mode = choose_present_mode(&present_modes);
+        let present_mode = choose_present_mode(&present_modes, present);
         let extent = choose_extent(&caps, window_size);
         let image_count = choose_image_count(&caps);
 
@@ -150,9 +154,36 @@ fn choose_format(formats: &[vk::SurfaceFormatKHR]) -> vk::SurfaceFormatKHR {
         .unwrap_or(formats[0])
 }
 
-/// FIFO: wait for the screen's refresh (vsync). The spec guarantees every driver has it.
-fn choose_present_mode(_modes: &[vk::PresentModeKHR]) -> vk::PresentModeKHR {
-    vk::PresentModeKHR::FIFO
+/// How the app wants finished frames shown (particle_system § 1). The engine picks
+/// the best mode the surface actually offers for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PresentPreference {
+    /// Wait for the screen's refresh (FIFO): smooth, no tearing, fps capped at the
+    /// refresh rate. What scop always used.
+    #[default]
+    Vsync,
+    /// Don't wait: fps shows what the GPU can really do. IMMEDIATE (may tear), else
+    /// MAILBOX (newest frame wins, no tearing), else FIFO if neither is offered.
+    Uncapped,
+}
+
+/// Picks from what the surface offers. Only FIFO is guaranteed by the spec, so it is
+/// always the fallback: asking for a mode that isn't in the list is an error.
+fn choose_present_mode(
+    offered: &[vk::PresentModeKHR],
+    preference: PresentPreference,
+) -> vk::PresentModeKHR {
+    let wanted: &[vk::PresentModeKHR] = match preference {
+        PresentPreference::Vsync => &[],
+        PresentPreference::Uncapped => {
+            &[vk::PresentModeKHR::IMMEDIATE, vk::PresentModeKHR::MAILBOX]
+        }
+    };
+    wanted
+        .iter()
+        .copied()
+        .find(|mode| offered.contains(mode))
+        .unwrap_or(vk::PresentModeKHR::FIFO)
 }
 
 /// The surface's own size, unless it says "you choose" (width = u32::MAX):
@@ -208,4 +239,38 @@ fn create_view(
         .subresource_range(COLOUR_RANGE);
     // SAFETY: `image` belongs to a live swapchain on this device.
     Ok(unsafe { device.create_image_view(&info, None)? })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vk::PresentModeKHR as M;
+
+    #[test]
+    fn vsync_is_always_fifo() {
+        let all = [M::IMMEDIATE, M::MAILBOX, M::FIFO];
+        assert_eq!(choose_present_mode(&all, PresentPreference::Vsync), M::FIFO);
+    }
+
+    #[test]
+    fn uncapped_prefers_immediate_then_mailbox() {
+        let all = [M::FIFO, M::MAILBOX, M::IMMEDIATE];
+        assert_eq!(
+            choose_present_mode(&all, PresentPreference::Uncapped),
+            M::IMMEDIATE
+        );
+        let no_immediate = [M::FIFO, M::MAILBOX];
+        assert_eq!(
+            choose_present_mode(&no_immediate, PresentPreference::Uncapped),
+            M::MAILBOX
+        );
+    }
+
+    #[test]
+    fn uncapped_falls_back_to_fifo() {
+        assert_eq!(
+            choose_present_mode(&[M::FIFO], PresentPreference::Uncapped),
+            M::FIFO
+        );
+    }
 }

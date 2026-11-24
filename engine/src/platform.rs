@@ -16,6 +16,7 @@ use winit::window::{Window, WindowId};
 use crate::app::{App, Flow, Frame, Gfx};
 use crate::gpu::{FrameStatus, GpuContext, GpuError};
 use crate::input::{Input, Key, MouseButton};
+use crate::swapchain::PresentPreference;
 
 /// What the app asks for when opening a window.
 pub struct WindowConfig {
@@ -23,6 +24,8 @@ pub struct WindowConfig {
     /// Size in logical points (the physical size is 2× on a Retina screen).
     pub width: u32,
     pub height: u32,
+    /// Vsync (FIFO, capped at the screen's rate) or uncapped (particle_system § 1).
+    pub present: PresentPreference,
 }
 
 /// Why `run` stopped with an error. Opaque on purpose: apps print it, they don't
@@ -210,7 +213,12 @@ impl<A: App> ApplicationHandler for Runner<A> {
         // `inner_size` is in physical pixels (2× the logical size on Retina).
         let size = window.inner_size();
         let app_name = CString::new(self.config.title.as_str()).unwrap_or_default();
-        let mut gpu = match GpuContext::new(&app_name, &window, (size.width, size.height)) {
+        let mut gpu = match GpuContext::new(
+            &app_name,
+            &window,
+            (size.width, size.height),
+            self.config.present,
+        ) {
             Ok(gpu) => gpu,
             Err(e) => return self.fail(event_loop, e.into()),
         };

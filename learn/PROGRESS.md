@@ -1,13 +1,13 @@
 # Progress
 
-**Current section:** 1
+**Current section:** 2
 **Last session:** 2026-11-24
 
 ## Sections
 
 | # | Status | Gate | Date | ES synced | Notes |
 |---|---|---|---|---|---|
-| 1 | written | — | 2026-11-24 | no | |
+| 1 | done | passed after misses (Q-1.2: 4 ms = 250 fps, *higher* — ms and fps move opposite ways; Q-1.3: 250 fps = 4 ms not 0.4, gave ms not fps — fresh variant (5 ms → 200 fps, +5 ms → 100 fps) passed; Q-1.5: 0 isn't just 'no particles' — a zero-sized Vulkan buffer is invalid, so check before the GPU) — checkpoint code by Claude (engine: PresentPreference Vsync/Uncapped in WindowConfig, choose_present_mode picks IMMEDIATE → MAILBOX → FIFO from what's offered, kept for resize; app: count.rs parser, title with count/fps/ms, Esc) — 125 tests, clippy/fmt clean; walkthrough given after owner asked for the information first (do this every time: walk through, *then* ask); explain-back passed with misses (stored `present` = the app's preference kept for resize rebuilds, not device specs; fresh variant: default on rebuild → silently capped to 60 after a resize — owner thought validation would catch it: it can't, FIFO is valid, it's a logic bug); verified on Mac (0 → message window, lots → random count, --vsync → 60, uncapped resize: brief dip then back up) | 2026-11-24 | no | Owner's scope: fun parser (pi, 42, lots, max, googol, 1e6, 2^20, 1.5m); `0` opens an empty window saying "Well..... This is what you asked for" — no particle buffer is ever created for 0 |
 | 2 | written | — | 2026-11-24 | no | |
 | 3 | not written | — | | no | |
 | 4 | not written | — | | no | |
@@ -59,6 +59,9 @@
 
 | Question | Source | Clean recalls | Next due |
 |---|---|---|---|
+| fps ↔ ms: 1000 ÷ fps; same added ms costs far more fps at high fps — fresh numeric variant | § 1 | 0 | after § 3 |
+| Validation catches *invalid* Vulkan use, not wrong-but-valid choices (FIFO after resize = silent logic bug) — fresh variant | § 1 explain-back | 0 | after § 3 |
+| Zero-sized Vulkan buffer is invalid → handle 0 in the app, never create the buffer — fresh variant | § 1 | 0 | after § 3 |
 
 ## Open threads
 - Engine copied from scop on 2026-11-24 (scop's engine at § 25). Not yet a git repo — owner to `git init` and commit.

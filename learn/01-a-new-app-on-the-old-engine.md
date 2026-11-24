@@ -2,7 +2,7 @@
 section: 1
 slug: a-new-app-on-the-old-engine
 tier: T1
-status: not-started
+status: done
 prereqs: []
 terms: [release build, debug build, LTO, codegen units, frame time, present mode, vsync, tearing, FIFO, IMMEDIATE, MAILBOX, command-line argument]
 ---
