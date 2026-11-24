@@ -6,13 +6,17 @@ mod count;
 use std::process::ExitCode;
 
 use engine::{
-    App, Flow, FpsCounter, Frame, Gfx, Input, Key, PresentPreference, RunError, WindowConfig, run,
-    text_size,
+    App, DispatchSize, Flow, FpsCounter, Frame, Gfx, GpuInfo, Input, Key, PresentPreference,
+    RunError, WindowConfig, run, text_size,
 };
 
-use count::{Count, parse_count, with_commas};
+use count::{Count, commas, parse_count, with_commas};
 
 const DEFAULT_COUNT: u32 = 1_000_000;
+/// Invocations per workgroup for the particle shaders (§ 2). A starting guess:
+/// a multiple of every subgroup size, within what desktop GPUs allow. § 13 measures
+/// the best value and § 16 checks it against the GPU's limits.
+const LOCAL_SIZE: u32 = 256;
 const BACKGROUND: [f32; 4] = [0.02, 0.02, 0.04, 1.0];
 const ZERO_MESSAGE: &str = "Well..... This is what you asked for";
 
@@ -65,8 +69,12 @@ impl Particles {
 }
 
 impl App for Particles {
-    fn setup(&mut self, _gfx: &mut Gfx<'_>) -> Result<(), RunError> {
-        // Nothing yet: the particle buffer arrives in § 4 — and never for a count of 0.
+    fn setup(&mut self, gfx: &mut Gfx<'_>) -> Result<(), RunError> {
+        // Nothing to create yet: the particle buffer arrives in § 4 — and never for a
+        // count of 0. § 2: describe the GPU's compute side and the dispatch we'll need.
+        for line in compute_report(&gfx.info(), self.count) {
+            println!("{line}");
+        }
         Ok(())
     }
 
@@ -97,6 +105,60 @@ impl App for Particles {
             frame.draw_text(ZERO_MESSAGE, position, scale, [0.85, 0.85, 0.9]);
         }
     }
+}
+
+/// § 2: the GPU, its compute limits, and how `count` particles split into
+/// workgroups of `LOCAL_SIZE` — plus a warning for anything that wouldn't fit.
+fn compute_report(info: &GpuInfo, count: u32) -> Vec<String> {
+    let (major, minor, patch) = info.vulkan_version;
+    let [size_x, size_y, size_z] = info.max_workgroup_size;
+    let mut lines = vec![
+        format!(
+            "GPU: {} (Vulkan {major}.{minor}.{patch}), queue family {} (graphics + present + compute), {}",
+            info.name, info.queue_family, info.present_mode
+        ),
+        format!(
+            "compute: workgroups of up to {} invocations ({size_x} × {size_y} × {size_z} per axis), \
+             up to {} per axis per dispatch, {} KB shared memory, subgroup {}",
+            info.max_workgroup_invocations,
+            with_commas(info.max_workgroup_count[0]),
+            info.max_shared_memory / 1024,
+            info.subgroup_size
+        ),
+    ];
+
+    if count == 0 {
+        lines.push("dispatch: 0 particles — nothing to dispatch".to_string());
+        return lines;
+    }
+    let d = DispatchSize::for_items(count, LOCAL_SIZE);
+    lines.push(format!(
+        "dispatch: {} particles at local size {LOCAL_SIZE} → {} workgroups, {} invocations, {} idle",
+        with_commas(count),
+        with_commas(d.workgroups),
+        commas(d.invocations),
+        with_commas(d.idle)
+    ));
+
+    if LOCAL_SIZE > info.max_workgroup_invocations || LOCAL_SIZE > size_x {
+        lines.push(format!(
+            "warning: local size {LOCAL_SIZE} is over this GPU's limit (§ 16 will pick one that fits)"
+        ));
+    }
+    if info.subgroup_size > 0 && !LOCAL_SIZE.is_multiple_of(info.subgroup_size) {
+        lines.push(format!(
+            "warning: local size {LOCAL_SIZE} isn't a multiple of the subgroup size {} (wasted lanes)",
+            info.subgroup_size
+        ));
+    }
+    if d.workgroups > info.max_workgroup_count[0] {
+        lines.push(format!(
+            "warning: {} workgroups is over the {} allowed in one direction (needs a 2D dispatch)",
+            with_commas(d.workgroups),
+            with_commas(info.max_workgroup_count[0])
+        ));
+    }
+    lines
 }
 
 fn main() -> ExitCode {

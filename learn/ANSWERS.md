@@ -71,3 +71,47 @@ idle. With one invocation per particle, each compute unit has many subgroups que
 switches to a ready one whenever another waits — memory waits are hidden. (A modest
 loop — a few particles per invocation — can sometimes help by reusing setup work, but
 only while enough subgroups remain to hide latency. § 13 measures this.)
+
+## Section 3
+
+**A-3.1** Any three of: vertex input (vertex layout / vertex buffers), the rasteriser
+(and topology, culling, polygon mode), the fragment stage, colour/depth attachments
+(the images it draws into), blending, depth testing, viewport/scissor. A compute
+pipeline has one shader stage and a layout, nothing else. Inputs arrive only through
+**push constants** (small values handed in with the command) and **descriptors**
+(buffers/images it reads — and can write). Its own invocation ID is the only thing
+given for free.
+
+**A-3.2** It's invalid: `cmd_dispatch` must not be recorded inside a rendering (render
+pass) instance — the validation layer reports it at the dispatch; without validation
+the behaviour is undefined. Record the dispatch **before** `cmd_begin_rendering` (or
+after `cmd_end_rendering`), in the same command buffer if you like.
+
+**A-3.3** Rust dispatches `ceil(1,000,000 / 256)` = 3,907 workgroups, but each runs only
+128 invocations: 3,907 × 128 = **500,096 invocations**, with IDs 0 … 500,095. All of
+them pass the guard (`id < 1,000,000`), so **values 0 … 500,095 are written and
+500,096 … 999,999 never are** (they keep whatever was there — zeros for a new buffer).
+Nothing warns you: both numbers are legal. The checkpoint avoids it with a
+**specialisation constant**: the shader's local size is filled in from `LOCAL_SIZE` when
+the pipeline is created, so Rust and the shader can't disagree.
+
+**A-3.4** Any two, with how to tell:
+- **Read before the GPU finished** (no fence wait): submit returns immediately. Symptom
+  may vary run to run (sometimes partly filled). Check the code waits on the fence first.
+- **Writes not made visible to the host** (missing compute → host barrier, or memory
+  that isn't `HOST_COHERENT` without an invalidate). Often works on one machine and not
+  another. Validation's synchronisation checks can flag it.
+- **Zero workgroups dispatched / `count` pushed as 0** (wrong push-constant bytes or
+  offset): every invocation fails the guard. Print the dispatch size and the pushed count.
+- **Descriptor points at a different buffer** than the one read back. Check the
+  descriptor write's buffer handle.
+- **Bound at the wrong bind point** — but this one gives a validation error at the dispatch.
+Consistent zeros with no validation errors → suspect the count or the descriptor;
+timing-dependent results → suspect synchronisation.
+
+**A-3.5** At **pipeline creation** (`create_compute_pipelines`): that's the first moment
+the shader (which uses a push-constant block in the compute stage) meets the layout
+(whose only push-constant range is for the vertex stage). `glslc` compiles the shader on
+its own and never sees the layout, so compilation succeeds. The validation layer reports
+that the shader's push-constant block isn't covered by a range for `COMPUTE`.
+`cmd_push_constants` with `COMPUTE` would also be flagged later, but creation fails first.

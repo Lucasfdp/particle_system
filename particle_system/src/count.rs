@@ -140,7 +140,8 @@ fn with_commas_f64(value: f64) -> String {
     }
 }
 
-fn commas(value: u64) -> String {
+/// Any whole number with commas (dispatch sizes can pass `u32::MAX`).
+pub fn commas(value: u64) -> String {
     let digits = value.to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {

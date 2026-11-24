@@ -176,3 +176,63 @@ registers and shared memory its resident workgroups use.
 extension structs such as `VkPhysicalDeviceSubgroupProperties` via `…properties2`.
 Vulkan guarantees minimums; real devices report more.
 **Introduced in:** § 2
+
+---
+
+## Section 3 — Programs that compute instead of draw
+
+### compute shader
+**Plain:** a GPU program that computes instead of drawing: no vertices in, no pixels out.
+**Precise:** a shader of the compute stage (`.comp`), run by `cmd_dispatch`; declares its
+workgroup size with `layout(local_size_x…) in;` and works only through descriptors and
+push constants.
+**Introduced in:** § 3
+
+### compute pipeline
+**Plain:** the GPU object that holds one compute shader, ready to run.
+**Precise:** created with `vkCreateComputePipelines` from a `VkComputePipelineCreateInfo`:
+one shader stage (with optional specialisation info) and a pipeline layout.
+**Introduced in:** § 3
+
+### storage buffer
+**Plain:** a buffer shaders can read and write, as big as you like.
+**Precise:** descriptor type `STORAGE_BUFFER` (buffer usage `STORAGE_BUFFER`); declared in
+GLSL with `buffer`, may end in an unsized array. Contrast: uniform buffers are small and
+read-only.
+**Introduced in:** § 3
+
+### SSBO
+**Plain:** another name for a storage buffer.
+**Precise:** *shader storage buffer object* — the OpenGL term, common in tutorials.
+**Introduced in:** § 3
+
+### bind point
+**Plain:** which kind of pipeline a bind command is for — drawing or computing.
+**Precise:** `vk::PipelineBindPoint::GRAPHICS` / `::COMPUTE`. A command buffer keeps the
+bound pipeline and descriptor sets separately per bind point.
+**Introduced in:** § 3
+
+### specialisation constant
+**Plain:** a shader constant filled in by Rust when the pipeline is created.
+**Precise:** `layout(constant_id = N) const …` (or `local_size_x_id = N` for the workgroup
+size), set through `VkSpecializationInfo` (map entries + data bytes) on the shader stage.
+Lets one SPIR-V file serve several configurations.
+**Introduced in:** § 3
+
+### readonly / writeonly
+**Plain:** promises in the shader that a buffer is only read, or only written.
+**Precise:** GLSL memory qualifiers on a `buffer` block; let the compiler optimise and
+make intent explicit.
+**Introduced in:** § 3
+
+### test buffer
+**Plain:** a throwaway buffer used only to check a shader's output.
+**Precise:** a host-visible (and host-coherent) storage buffer the CPU maps after the
+dispatch. Never used for particle data.
+**Introduced in:** § 3
+
+### readback
+**Plain:** copying GPU results back to the CPU to look at them.
+**Precise:** GPU writes → barrier (shader write → host read) → fence wait → map and read.
+Slow; for tests and debugging only.
+**Introduced in:** § 3

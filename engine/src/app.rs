@@ -176,6 +176,18 @@ pub struct GpuInfo {
     /// Smallest and largest dot size for `DrawStyle::Points`, in pixels (§ 18).
     /// `(1.0, 1.0)` means the GPU only draws 1-pixel dots.
     pub point_size_range: (f32, f32),
+    /// particle_system § 2 — the compute side. Biggest workgroup (local size x·y·z);
+    /// Vulkan guarantees at least 128.
+    pub max_workgroup_invocations: u32,
+    /// Biggest local size per axis (guaranteed ≥ 128 × 128 × 64).
+    pub max_workgroup_size: [u32; 3],
+    /// Most workgroups per axis in one dispatch (guaranteed ≥ 65,535).
+    pub max_workgroup_count: [u32; 3],
+    /// Bytes of shared memory one workgroup may use (guaranteed ≥ 16 KB).
+    pub max_shared_memory: u32,
+    /// Invocations the hardware runs in lockstep: 32 on Apple and NVIDIA, 32 or 64
+    /// on AMD, 8–32 on Intel.
+    pub subgroup_size: u32,
 }
 
 /// One requested draw, as the app described it (tickets + plain numbers).

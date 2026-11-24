@@ -100,8 +100,8 @@ fps target, every change measurable. It is a poor vehicle for physics depth
 |---|---|---|---|---|---|
 | | **Phase 1 · Foundations** | | | | |
 | 1 | `01-a-new-app-on-the-old-engine.md` | A new app on the old engine | T1 | done | `particle_system` app opens a window; uncapped FPS in the title; particle count from the command line |
-| 2 | `02-thinking-in-parallel.md` | How a GPU runs a million things at once | T2 | written | Startup prints the device's compute limits and the dispatch size for N particles |
-| 3 | `03-compute-shaders.md` | Programs that compute instead of draw | T2 | not written | Engine compute pipeline; a compute shader fills a test buffer |
+| 2 | `02-thinking-in-parallel.md` | How a GPU runs a million things at once | T2 | done | Startup prints the device's compute limits and the dispatch size for N particles |
+| 3 | `03-compute-shaders.md` | Programs that compute instead of draw | T2 | written | Engine compute pipeline; a compute shader fills a test buffer |
 | 4 | `04-particle-buffer-layout.md` | The particle buffer and its memory layout | T2 | not written | Device-local particle buffer sized from N; Rust ↔ GLSL layout checked |
 | | **Phase 2 · Particles on screen** | | | | |
 | 5 | `05-creating-particles-on-the-gpu.md` | Creating particles without touching RAM | T1 | not written | Init compute shader: sphere / cube, switched by a key |

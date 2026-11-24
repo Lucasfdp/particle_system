@@ -2,7 +2,7 @@
 section: 2
 slug: thinking-in-parallel
 tier: T2
-status: not-started
+status: done
 prereqs: [1]
 terms: [invocation, workgroup, local size, dispatch, workgroup count, global invocation ID, subgroup, SIMD, lockstep, divergence, latency hiding, occupancy, bounds guard, embarrassingly parallel, compute unit, device limits]
 ---

@@ -6,6 +6,7 @@
 mod app;
 mod buffer;
 mod camera;
+mod compute;
 mod defaults;
 mod depth;
 mod fps;
@@ -34,6 +35,7 @@ mod tween;
 // The whole public API.
 pub use app::{App, Flow, Frame, Gfx, GpuInfo, InstanceRange, MeshId, PipelineId, TextureId};
 pub use camera::{CameraSettings, Framing, OrbitCamera, Up, depth_range};
+pub use compute::DispatchSize;
 pub use defaults::{ColourMode, DEFAULT_SHADERS, DefaultParams, SKY_SHADERS, default_shader_files};
 pub use fps::{FpsCounter, FpsReading};
 pub use input::{Input, Key, MouseButton};

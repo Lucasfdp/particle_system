@@ -814,7 +814,26 @@ impl GpuContext {
                 props.limits.point_size_range[0],
                 props.limits.point_size_range[1],
             ),
+            max_workgroup_invocations: props.limits.max_compute_work_group_invocations,
+            max_workgroup_size: props.limits.max_compute_work_group_size,
+            max_workgroup_count: props.limits.max_compute_work_group_count,
+            max_shared_memory: props.limits.max_compute_shared_memory_size,
+            subgroup_size: self.subgroup_size(),
         }
+    }
+
+    /// Subgroup size isn't in the plain limits: it comes from an extra struct chained
+    /// onto the "properties 2" query (Vulkan 1.1+; the instance asks for 1.2).
+    fn subgroup_size(&self) -> u32 {
+        let mut subgroup = vk::PhysicalDeviceSubgroupProperties::default();
+        let mut props = vk::PhysicalDeviceProperties2::default().push_next(&mut subgroup);
+        // SAFETY: `physical_device` came from this instance, which is still alive;
+        // `subgroup` outlives the call.
+        unsafe {
+            self.instance
+                .get_physical_device_properties2(self.physical_device, &mut props)
+        };
+        subgroup.subgroup_size
     }
 
     fn properties(&self) -> vk::PhysicalDeviceProperties {
@@ -1015,6 +1034,7 @@ fn pick_physical_device(
     // SAFETY: plain queries on a live instance and surface.
     let devices = unsafe { instance.enumerate_physical_devices()? };
     let mut lacks_dynamic_rendering = false;
+    let mut lacks_compute = false;
     for device in devices {
         if !has_device_extension(instance, device, khr::swapchain::NAME)? {
             continue;
@@ -1027,10 +1047,16 @@ fn pick_physical_device(
         for (index, family) in families.iter().enumerate() {
             let index = index as u32;
             let draws = family.queue_flags.contains(vk::QueueFlags::GRAPHICS);
+            // particle_system § 2: the same queue runs the compute shaders, so the
+            // family must do all three (one queue, no hand-over between families).
+            let computes = family.queue_flags.contains(vk::QueueFlags::COMPUTE);
             let presents = unsafe {
                 surface_loader.get_physical_device_surface_support(device, index, surface)?
             };
-            if draws && presents {
+            if draws && presents && !computes {
+                lacks_compute = true;
+            }
+            if draws && presents && computes {
                 return Ok((device, index));
             }
         }
@@ -1038,6 +1064,11 @@ fn pick_physical_device(
     if lacks_dynamic_rendering {
         return Err(GpuError::Unsupported(
             "VK_KHR_dynamic_rendering (the GPU driver may be too old)",
+        ));
+    }
+    if lacks_compute {
+        return Err(GpuError::Unsupported(
+            "a queue family that draws, presents *and* computes",
         ));
     }
     Err(GpuError::NoSuitableGpu)
