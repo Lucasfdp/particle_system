@@ -1,0 +1,54 @@
+{
+  "repo": "Lucasfdp/particle_system",
+  "branch": "main",
+  "es_mirror": true,
+  "phases": [
+    {"name": "1 · Foundations", "sections": [1, 2, 3, 4], "description": "New app on the scop engine, honest fps, thinking in parallel, compute pipelines, the particle buffer"},
+    {"name": "2 · Particles on screen", "sections": [5, 6, 7, 8], "description": "Create particles on the GPU, draw points, compute → graphics handover (interop), frames in flight"},
+    {"name": "3 · Simulation", "sections": [9, 10, 11], "description": "Gravity and motion, cursor to world, colour by distance"},
+    {"name": "4 · Performance", "sections": [12, 13, 14, 15, 16], "description": "Measure, fast simulation, cheap drawing, engine overhead audit, weaker machines. Targets: 1M at 60 fps, 3M at 20 fps"},
+    {"name": "5 · Mandatory finish", "sections": [17], "description": "make one-liner, README, defence checklist. Bonus is only graded if this is perfect."},
+    {"name": "6 · Bonus", "sections": [18, 19, 20, 21], "description": "Free-fly camera, GPU atomics, emitters with life span, engine consolidation, creativity extras"}
+  ],
+  "areas": {
+    "engine": [1, 2, 3, 4, 6, 7, 8, 12, 13, 14, 15, 16, 19, 21],
+    "particle_system": [1, 5, 9, 10, 11, 17, 18, 20]
+  },
+  "workflow": [
+    "Section file written (`learn/`)",
+    "Read the section and answered its gate questions",
+    "Gate passed (misses re-taught, fresh question re-asked)",
+    "Checkpoint code written by Claude, walked through part by part",
+    "Explain-back passed: can explain every line",
+    "AI-written code noted in README → AI usage"
+  ],
+  "verify": [
+    "cargo build",
+    "cargo clippy --all-targets",
+    "cargo fmt --check",
+    "cargo test",
+    "cargo run --release -p particle_system -- 1000000 (checked on the Mac; fps from release only)"
+  ],
+  "tasks": [
+    {"slug": "build-rs-compute-shaders", "title": "engine/build.rs: compile `.comp` shaders too (before § 3)", "phase": "1 · Foundations", "labels": ["blocker"],
+     "body": "`engine/build.rs` only picks up `vert` and `frag` files. Compute shaders (`.comp`) must be compiled to SPIR-V and get a committed `spv/` fallback like the others. The Makefile's `spv` target already includes `*.comp`."},
+    {"slug": "campus-vulkan-compute", "title": "Confirm Vulkan compute runs on a 42 Madrid campus machine", "phase": "1 · Foundations", "labels": ["defence"],
+     "body": "The defence runs on campus hardware. As soon as § 3's test dispatch works, run it there: check the queue family supports COMPUTE and note the GPU's limits (§ 2 printout)."},
+    {"slug": "campus-benchmark", "title": "Benchmark 1M @ 60 fps and 3M @ 20 fps on a campus machine", "phase": "4 · Performance", "labels": ["blocker", "defence"],
+     "body": "Release build, uncapped present mode. Record frame times in ms for 1M and 3M particles on the Mac and on campus in `DECISIONS.md` or the README. The mandatory part fails if either target is missed on the evaluation machine."},
+    {"slug": "engine-test-fixtures", "title": "Move engine test fixtures inside `engine/`", "phase": "6 · Bonus", "labels": ["tech-debt"],
+     "body": "Engine unit tests read `../resources/*.obj` (copied from scop on 2026-11-24 so `cargo test` passes). That couples the engine to the app's folder layout. Move them to `engine/tests/fixtures/` (or similar) during § 21."},
+    {"slug": "never-in-ram-audit", "title": "Defence: show that particles never exist in RAM", "phase": "5 · Mandatory finish", "labels": ["defence"],
+     "body": "Walk the code: no CPU-side particle array, no staging buffer for particles, buffer created DEVICE_LOCAL and filled by the init compute shader only. Prepare a 30-second explanation."},
+    {"slug": "interop-defence-note", "title": "Defence: explain Vulkan interop (barriers / release-acquire)", "phase": "5 · Mandatory finish", "labels": ["defence"],
+     "body": "The subject's 'memory acquire and release' wording is written for OpenCL/OpenGL. Prepare the Vulkan equivalent from § 7 and `DECISIONS.md`, with the barrier code ready to show."},
+    {"slug": "readme-final", "title": "Final README: Description, Instructions, Resources, AI usage", "phase": "5 · Mandatory finish", "labels": ["defence"],
+     "body": "AI usage must state that Claude writes the checkpoint code after each gate and that the engine was carried over from scop, built the same way."},
+    {"slug": "defence-prep", "title": "Defence prep: collect traps and decisions", "phase": "5 · Mandatory finish", "labels": ["defence"],
+     "body": "Fill `00-PLAN.md → Defence prep` from `DECISIONS.md` and each section's Known traps as sections close."},
+    {"slug": "creativity-extras", "title": "Choose creativity extras for the bonus", "phase": "6 · Bonus", "labels": [],
+     "body": "After § 17: pick extras (e.g. several gravity points, shapes, trails, presets). Each gets its own learning section."},
+    {"slug": "spanish-catch-up", "title": "Catch up `learn_es/` (Spanish mirror)", "phase": "6 · Bonus", "labels": [],
+     "body": "Paused by choice. Translate finished sections, ANSWERS and GLOSSARY in batches; then `python3 scripts/check_learn.py` should be clean."}
+  ]
+}

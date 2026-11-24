@@ -64,4 +64,4 @@
 - Engine copied from scop on 2026-11-24 (scop's engine at § 25). Not yet a git repo — owner to `git init` and commit.
 - **Engine coupling found:** engine unit tests read `../resources/*.obj` (scop's files). Copied `resources/42.obj`, `teapot.obj` and `resources/test/` here so `cargo test` passes (112 tests, clippy clean, 2026-11-24). Fix properly in § 21: engine test fixtures inside `engine/`.
 - Creativity extras: choose after § 17.
-- Offer GitHub issues tracking (`scripts/learn_issues.py`) once the repo exists on GitHub.
+- GitHub issues configured (`learn/issues.json`, 21 sections + 10 tasks, 6 milestones). Claude's session had read-only GitHub access → owner runs the first `sync`.
