@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["engine", "particle_system"]
+
+# Optimisation is a project goal (see DECISIONS.md): release builds get the
+# full treatment; tuning flags are a § 15/18 topic, these are just sane defaults.
+[profile.release]
+codegen-units = 1
+lto = "thin"
